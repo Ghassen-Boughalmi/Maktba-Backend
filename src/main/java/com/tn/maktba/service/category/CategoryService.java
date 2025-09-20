@@ -1,14 +1,12 @@
 package com.tn.maktba.service.category;
 
-import com.tn.maktba.dto.category.CategoryDTO;
 import com.tn.maktba.dto.category.CategoryRequestDTO;
-
-import java.util.List;
+import org.springframework.http.ResponseEntity;
 
 public interface CategoryService {
-    CategoryDTO createCategory(CategoryRequestDTO categoryRequestDTO);
-    CategoryDTO getCategory(Long id);
-    List<CategoryDTO> getAllCategories();
-    CategoryDTO updateCategory(Long id, CategoryRequestDTO categoryRequestDTO);
-    void deleteCategory(Long id);
+    ResponseEntity<?> createCategory(CategoryRequestDTO categoryRequestDTO);
+    ResponseEntity<?> getCategory(Long id);
+    ResponseEntity<?> getAllCategories();
+    ResponseEntity<?> updateCategory(Long id, CategoryRequestDTO categoryRequestDTO);
+    ResponseEntity<?> deleteCategory(Long id);
 }

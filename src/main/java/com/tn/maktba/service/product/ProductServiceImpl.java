@@ -8,7 +8,7 @@ import com.tn.maktba.model.category.Category;
 import com.tn.maktba.model.product.Product;
 import com.tn.maktba.repository.CategoryRepository;
 import com.tn.maktba.repository.ProductRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,17 +17,23 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final Cloudinary cloudinary;
 
+    public ProductServiceImpl(ProductRepository productRepository, CategoryRepository categoryRepository, Cloudinary cloudinary) {
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
+        this.cloudinary = cloudinary;
+    }
+
     @Override
-    public ProductDTO createProduct(ProductRequestDTO productRequestDTO) throws IOException {
-        System.out.println("Received ProductRequestDTO: " + productRequestDTO);
-        Category category = categoryRepository.findById(productRequestDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+    public ResponseEntity<?> createProduct(ProductRequestDTO productRequestDTO) throws IOException {
+        Category category = categoryRepository.findById(productRequestDTO.getCategoryId()).orElse(null);
+        if (category == null) {
+            return ResponseEntity.status(404).body("Category not found");
+        }
 
         String imageURL = null;
         if (productRequestDTO.getImage() != null && !productRequestDTO.getImage().isEmpty()) {
@@ -46,30 +52,36 @@ public class ProductServiceImpl implements ProductService {
         product.setImageURL(imageURL);
         product.setCategory(category);
         product = productRepository.save(product);
-        return convertToDTO(product);
+        return ResponseEntity.ok(convertToDTO(product));
     }
 
     @Override
-    public ProductDTO getProduct(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-        return convertToDTO(product);
+    public ResponseEntity<?> getProduct(Long id) {
+        Product product = productRepository.findById(id).orElse(null);
+        if (product == null) {
+            return ResponseEntity.status(404).body("Product not found");
+        }
+        return ResponseEntity.ok(convertToDTO(product));
     }
 
     @Override
-    public List<ProductDTO> getAllProducts() {
-        return productRepository.findAll().stream()
+    public ResponseEntity<?> getAllProducts() {
+        List<ProductDTO> products = productRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+        return ResponseEntity.ok(products);
     }
 
     @Override
-    public ProductDTO updateProduct(Long id, ProductRequestDTO productRequestDTO) throws IOException {
-        System.out.println("Received ProductRequestDTO: " + productRequestDTO);
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-        Category category = categoryRepository.findById(productRequestDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+    public ResponseEntity<?> updateProduct(Long id, ProductRequestDTO productRequestDTO) throws IOException {
+        Product product = productRepository.findById(id).orElse(null);
+        if (product == null) {
+            return ResponseEntity.status(404).body("Product not found");
+        }
+        Category category = categoryRepository.findById(productRequestDTO.getCategoryId()).orElse(null);
+        if (category == null) {
+            return ResponseEntity.status(404).body("Category not found");
+        }
 
         if (productRequestDTO.getImage() != null && !productRequestDTO.getImage().isEmpty()) {
             if (product.getImageURL() != null) {
@@ -89,18 +101,21 @@ public class ProductServiceImpl implements ProductService {
         product.setQuantity(productRequestDTO.getQuantity());
         product.setCategory(category);
         product = productRepository.save(product);
-        return convertToDTO(product);
+        return ResponseEntity.ok(convertToDTO(product));
     }
 
     @Override
-    public void deleteProduct(Long id) throws IOException {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+    public ResponseEntity<?> deleteProduct(Long id) throws IOException {
+        Product product = productRepository.findById(id).orElse(null);
+        if (product == null) {
+            return ResponseEntity.status(404).body("Product not found");
+        }
         if (product.getImageURL() != null) {
             String publicId = extractPublicId(product.getImageURL());
             cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
         }
         productRepository.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 
     private ProductDTO convertToDTO(Product product) {

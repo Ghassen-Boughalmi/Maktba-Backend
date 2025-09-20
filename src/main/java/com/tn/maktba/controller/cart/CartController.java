@@ -2,16 +2,18 @@ package com.tn.maktba.controller.cart;
 
 import com.tn.maktba.dto.cart.CartRequests;
 import com.tn.maktba.service.cart.CartService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/cart")
-@RequiredArgsConstructor
 public class CartController {
 
     private final CartService cartService;
+
+    public CartController(CartService cartService) {
+        this.cartService = cartService;
+    }
 
     @PostMapping("/add")
     public ResponseEntity<?> addToCart(@RequestBody CartRequests.AddToCartRequest request) {

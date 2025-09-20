@@ -8,12 +8,8 @@ import com.tn.maktba.model.order.OrderStatus;
 import com.tn.maktba.model.product.Product;
 import com.tn.maktba.repository.OrderRepository;
 import com.tn.maktba.repository.ProductRepository;
-import com.tn.maktba.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,125 +17,106 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
     private final ProductRepository productRepository;
 
+    public OrderServiceImpl(OrderRepository orderRepository, ProductRepository productRepository) {
+        this.orderRepository = orderRepository;
+
+        this.productRepository = productRepository;
+    }
+
     @Override
-    @Transactional
     public ResponseEntity<?> modifyOrder(Long userId, Long orderId, Map<Long, Integer> updates) {
-        try {
-            Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-            if (!order.getUser().getId().equals(userId) || order.getStatus() == OrderStatus.PROCESSED) {
-                throw new IllegalStateException("Cannot modify order");
-            }
-
-            order.getItems().removeIf(item -> !updates.containsKey(item.getProduct().getId()));
-            for (Map.Entry<Long, Integer> entry : updates.entrySet()) {
-                Long productId = entry.getKey();
-                Integer quantity = entry.getValue();
-                Product product = productRepository.findById(productId)
-                        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-                Optional<OrderItem> existingItem = order.getItems().stream()
-                        .filter(item -> item.getProduct().getId().equals(productId))
-                        .findFirst();
-
-                if (existingItem.isPresent()) {
-                    existingItem.get().setQuantity(quantity);
-                } else {
-                    OrderItem newItem = OrderItem.builder()
-                            .order(order)
-                            .product(product)
-                            .quantity(quantity)
-                            .build();
-                    order.getItems().add(newItem);
-                }
-            }
-
-            order.setTotalPrice(calculateTotal(order.getItems()));
-            order.setUpdatedAt(LocalDateTime.now());
-            order.setStatus(OrderStatus.MODIFIED);
-            orderRepository.save(order);
-            return ResponseEntity.ok(toDTO(order));
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Failed to modify order"));
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Order not found"));
         }
+        if (!order.getUser().getId().equals(userId) || order.getStatus() == OrderStatus.PROCESSED) {
+            return ResponseEntity.status(400).body(Map.of("error", "Cannot modify order"));
+        }
+
+        order.getItems().removeIf(item -> !updates.containsKey(item.getProduct().getId()));
+        for (Map.Entry<Long, Integer> entry : updates.entrySet()) {
+            Long productId = entry.getKey();
+            Integer quantity = entry.getValue();
+            Product product = productRepository.findById(productId).orElse(null);
+            if (product == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+            }
+
+            Optional<OrderItem> existingItem = order.getItems().stream()
+                    .filter(item -> item.getProduct().getId().equals(productId))
+                    .findFirst();
+
+            if (existingItem.isPresent()) {
+                existingItem.get().setQuantity(quantity);
+            } else {
+                OrderItem newItem = OrderItem.builder()
+                        .order(order)
+                        .product(product)
+                        .quantity(quantity)
+                        .build();
+                order.getItems().add(newItem);
+            }
+        }
+
+        order.setTotalPrice(calculateTotal(order.getItems()));
+        order.setUpdatedAt(LocalDateTime.now());
+        order.setStatus(OrderStatus.MODIFIED);
+        orderRepository.save(order);
+        return ResponseEntity.ok(toDTO(order));
     }
 
     @Override
     public ResponseEntity<?> getAdminOrders() {
-        try {
-            List<CartOrderDTO> orders = orderRepository.findByStatusIn(List.of(OrderStatus.PENDING, OrderStatus.MODIFIED))
-                    .stream()
-                    .map(this::toDTO)
-                    .toList();
-            return ResponseEntity.ok(orders);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Failed to retrieve orders"));
-        }
+        List<CartOrderDTO> orders = orderRepository.findByStatusIn(List.of(OrderStatus.PENDING, OrderStatus.MODIFIED))
+                .stream()
+                .map(this::toDTO)
+                .toList();
+        return ResponseEntity.ok(orders);
     }
 
     @Override
-    @Transactional
     public ResponseEntity<?> prepareOrder(Long orderId) {
-        try {
-            Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-            if (order.getStatus() == OrderStatus.PROCESSED) {
-                throw new IllegalStateException("Order already processed");
-            }
-
-            for (OrderItem item : order.getItems()) {
-                Product product = item.getProduct();
-                int newQuantity = product.getQuantity() - item.getQuantity();
-                if (newQuantity < 0) {
-                    throw new IllegalStateException("Insufficient stock for product: " + product.getName());
-                }
-                product.setQuantity(newQuantity);
-                productRepository.save(product);
-            }
-
-            order.setStatus(OrderStatus.PROCESSED);
-            order.setUpdatedAt(LocalDateTime.now());
-            orderRepository.save(order);
-            return ResponseEntity.ok(toDTO(order));
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Failed to prepare order"));
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Order not found"));
         }
+        if (order.getStatus() == OrderStatus.PROCESSED) {
+            return ResponseEntity.status(400).body(Map.of("error", "Order already processed"));
+        }
+
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            int newQuantity = product.getQuantity() - item.getQuantity();
+            if (newQuantity < 0) {
+                return ResponseEntity.status(400).body(Map.of("error", "Insufficient stock for product: " + product.getName()));
+            }
+            product.setQuantity(newQuantity);
+            productRepository.save(product);
+        }
+
+        order.setStatus(OrderStatus.PROCESSED);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+        return ResponseEntity.ok(toDTO(order));
     }
 
     @Override
-    @Transactional
     public ResponseEntity<?> removeOrder(Long orderId) {
-        try {
-            Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-            if (order.getStatus() == OrderStatus.PROCESSED) {
-                throw new IllegalStateException("Cannot remove processed order");
-            }
-
-            orderRepository.delete(order);
-            return ResponseEntity.ok().build();
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Failed to remove order"));
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Order not found"));
         }
+        if (order.getStatus() == OrderStatus.PROCESSED) {
+            return ResponseEntity.status(400).body(Map.of("error", "Cannot remove processed order"));
+        }
+
+        orderRepository.delete(order);
+        return ResponseEntity.ok().build();
     }
 
     private CartOrderDTO toDTO(Order order) {

@@ -1,43 +1,42 @@
 package com.tn.maktba.controller.category;
 
-
 import com.tn.maktba.dto.category.CategoryRequestDTO;
 import com.tn.maktba.service.category.CategoryService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryController {
 
-    @Autowired
-    private CategoryService categoryService;
+    private final CategoryService categoryService;
+
+    public CategoryController(CategoryService categoryService) {
+        this.categoryService = categoryService;
+    }
 
     @PostMapping("/create")
-    public Optional<?> createCategory(@RequestBody CategoryRequestDTO categoryDTO) {
-        return Optional.of(categoryService.createCategory(categoryDTO));
+    public ResponseEntity<?> createCategory(@RequestBody CategoryRequestDTO categoryDTO) {
+        return categoryService.createCategory(categoryDTO);
     }
 
-    @GetMapping("/get/{id}")
-    public Optional<?> getCategory(@PathVariable Long id) {
-        return Optional.of(categoryService.getCategory(id));
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getCategory(@PathVariable Long id) {
+        return categoryService.getCategory(id);
     }
 
-    @GetMapping("/get-all")
-    public Optional<?> getAllCategories() {
-        return Optional.of(categoryService.getAllCategories());
+    @GetMapping
+    public ResponseEntity<?> getAllCategories() {
+        return categoryService.getAllCategories();
     }
 
-    @PutMapping("/update/{id}")
-    public Optional<?> updateCategory(@PathVariable Long id, @RequestBody CategoryRequestDTO categoryDTO) {
-        return Optional.of(categoryService.updateCategory(id, categoryDTO));
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateCategory(@PathVariable Long id, @RequestBody CategoryRequestDTO categoryDTO) {
+        return categoryService.updateCategory(id, categoryDTO);
     }
 
-    @DeleteMapping("/delete/{id}")
-    public Optional<?> deleteCategory(@PathVariable Long id) {
-        categoryService.deleteCategory(id);
-        return Optional.empty();
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCategory(@PathVariable Long id) {
+        return categoryService.deleteCategory(id);
     }
 }

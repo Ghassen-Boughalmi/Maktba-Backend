@@ -12,7 +12,6 @@ import com.tn.maktba.service.sms.SmsService;
 import jakarta.security.auth.message.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,7 +28,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -40,7 +38,21 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final SmsService smsService;
 
-    private final Map<String, MFAData> verificationCodes = new ConcurrentHashMap<>();
+    private final Map<String, MFAData> verificationCodes;
+
+    public AuthServiceImpl(UserRepository userRepository, TokenRepository tokenRepository,
+                           JwtService jwtService, PasswordEncoder passwordEncoder,
+                           UserEntityDTOMapper userEntityDTOMapper, AuthenticationManager authenticationManager,
+                           SmsService smsService) {
+        this.userRepository = userRepository;
+        this.tokenRepository = tokenRepository;
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+        this.userEntityDTOMapper = userEntityDTOMapper;
+        this.authenticationManager = authenticationManager;
+        this.smsService = smsService;
+        this.verificationCodes = new ConcurrentHashMap<>();
+    }
 
     @Override
     public ResponseEntity<?> register(RegisterRequest request) {

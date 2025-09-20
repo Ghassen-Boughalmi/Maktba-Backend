@@ -1,55 +1,65 @@
 package com.tn.maktba.service.category;
 
-
 import com.tn.maktba.dto.category.CategoryDTO;
 import com.tn.maktba.dto.category.CategoryRequestDTO;
 import com.tn.maktba.model.category.Category;
 import com.tn.maktba.repository.CategoryRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository categoryRepository;
 
+    public CategoryServiceImpl(CategoryRepository categoryRepository) {
+        this.categoryRepository = categoryRepository;
+    }
+
     @Override
-    public CategoryDTO createCategory(CategoryRequestDTO categoryRequestDTO) {
+    public ResponseEntity<?> createCategory(CategoryRequestDTO categoryRequestDTO) {
         Category category = new Category();
         category.setName(categoryRequestDTO.getName());
         category = categoryRepository.save(category);
-        return convertToDTO(category);
+        return ResponseEntity.ok(convertToDTO(category));
     }
 
     @Override
-    public CategoryDTO getCategory(Long id) {
+    public ResponseEntity<?> getCategory(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-        return convertToDTO(category);
+                .orElse(null);
+        if (category == null) {
+            return ResponseEntity.status(404).body("Category not found");
+        }
+        return ResponseEntity.ok(convertToDTO(category));
     }
 
     @Override
-    public List<CategoryDTO> getAllCategories() {
-        return categoryRepository.findAll().stream()
+    public ResponseEntity<?> getAllCategories() {
+        List<CategoryDTO> categories = categoryRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+        return ResponseEntity.ok(categories);
     }
 
     @Override
-    public CategoryDTO updateCategory(Long id, CategoryRequestDTO categoryRequestDTO) {
+    public ResponseEntity<?> updateCategory(Long id, CategoryRequestDTO categoryRequestDTO) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElse(null);
+        if (category == null) {
+            return ResponseEntity.status(404).body("Category not found");
+        }
         category.setName(categoryRequestDTO.getName());
         category = categoryRepository.save(category);
-        return convertToDTO(category);
+        return ResponseEntity.ok(convertToDTO(category));
     }
 
     @Override
-    public void deleteCategory(Long id) {
+    public ResponseEntity<?> deleteCategory(Long id) {
         categoryRepository.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 
     private CategoryDTO convertToDTO(Category category) {

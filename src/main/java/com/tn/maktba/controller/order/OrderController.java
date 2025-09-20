@@ -2,16 +2,18 @@ package com.tn.maktba.controller.order;
 
 import com.tn.maktba.dto.order.OrderRequests;
 import com.tn.maktba.service.order.OrderService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/order")
-@RequiredArgsConstructor
 public class OrderController {
 
     private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
+    }
 
     @PutMapping("/modify/{orderId}")
     public ResponseEntity<?> modifyOrder(@PathVariable Long orderId, @RequestBody OrderRequests.ModifyOrderRequest request) {

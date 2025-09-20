@@ -2,16 +2,18 @@ package com.tn.maktba.controller.user;
 
 import com.tn.maktba.dto.user.UpdateUserRequest;
 import com.tn.maktba.service.user.UserService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/user")
-@RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @PutMapping("/update/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable Long userId, @RequestBody UpdateUserRequest request) {
