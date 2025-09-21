@@ -1,5 +1,8 @@
 package com.tn.maktba.security.jwt;
 
+import com.tn.maktba.exceptions.ExpiredTokenException;
+import com.tn.maktba.exceptions.InvalidTokenException;
+import com.tn.maktba.exceptions.RevokedTokenException;
 import com.tn.maktba.model.user.UserEntity;
 import com.tn.maktba.repository.TokenRepository;
 import jakarta.servlet.FilterChain;
@@ -42,22 +45,36 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
         String type = jwtService.extractClaim(jwt, claims -> claims.get("type", String.class));
         if (!"access".equals(type)) {
-            filterChain.doFilter(request, response);
-            return;
+            throw new InvalidTokenException("Token type is not access.");
         }
 
         String idCartNumber = jwtService.getIdCartNumberFromJwtToken(jwt);
-        if (idCartNumber != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (idCartNumber == null) {
+            throw new InvalidTokenException("Invalid token: Unable to extract idCartNumber.");
+        }
+
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(idCartNumber);
             boolean isTokenValid = tokenRepository.findByToken(jwt)
-                    .map(t -> !t.isExpired() && !t.isRevoked())
-                    .orElse(false);
-            if (isTokenValid && jwtService.isTokenValid(jwt, (UserEntity) userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    .map(t -> {
+                        if (t.isExpired()) {
+                            throw new ExpiredTokenException("Token has expired.");
+                        }
+                        if (t.isRevoked()) {
+                            throw new RevokedTokenException("Token has been revoked.");
+                        }
+                        return true;
+                    })
+                    .orElseThrow(() -> new InvalidTokenException("Token not found in repository."));
+
+            if (!jwtService.isTokenValid(jwt, (UserEntity) userDetails)) {
+                throw new InvalidTokenException("Token validation failed.");
             }
+
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);
