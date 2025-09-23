@@ -52,7 +52,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public ResponseEntity<?> register(RegisterRequest request) {
         if (userRepository.existsByIdCartNumber(request.getIdCartNumber())) {
             throw new IllegalArgumentException("ID Cart Number already in use: " + request.getIdCartNumber());
