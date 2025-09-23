@@ -9,8 +9,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
@@ -22,7 +20,7 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
+
     private final Key accessKey;
 
     public JwtService() {
@@ -33,7 +31,6 @@ public class JwtService {
         try {
             return extractClaim(token, Claims::getSubject);
         } catch (JwtException e) {
-            logger.error("Failed to extract idCartNumber from token: {}", e.getMessage());
             throw new InvalidTokenException("Invalid token");
         }
     }
@@ -42,7 +39,6 @@ public class JwtService {
         try {
             return extractClaim(token, claimsResolver, accessKey);
         } catch (JwtException e) {
-            logger.error("Failed to extract claim from token: {}", e.getMessage());
             throw new InvalidTokenException("Invalid token");
         }
     }
@@ -73,7 +69,6 @@ public class JwtService {
             }
             return idCartNumber != null && idCartNumber.equals(userDetails.getIdCartNumber()) && !isTokenExpired(token);
         } catch (JwtException e) {
-            logger.error("Token validation failed: {}", e.getMessage());
             throw new InvalidTokenException("Invalid token");
         }
     }

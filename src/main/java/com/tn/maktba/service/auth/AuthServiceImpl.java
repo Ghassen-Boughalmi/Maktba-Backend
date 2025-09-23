@@ -116,7 +116,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) {
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -147,7 +146,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public ResponseEntity<?> changePassword(ChangePasswordRequest request) {
         if ((request.getPhoneNumber() == null || request.getPhoneNumber().isEmpty()) &&
                 (request.getIdCartNumber() == null || request.getIdCartNumber().isEmpty())) {
@@ -188,7 +186,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public ResponseEntity<?> verifyCode(String phoneNumber, String code) {
         verificationCodeService.validateVerificationCode(phoneNumber, code);
         return ResponseEntity.ok("Verification successful.");
