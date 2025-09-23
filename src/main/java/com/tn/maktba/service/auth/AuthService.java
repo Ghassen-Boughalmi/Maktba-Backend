@@ -13,7 +13,7 @@ import java.io.IOException;
 public interface AuthService {
     ResponseEntity<?> register(@NotNull RegisterRequest request);
     ResponseEntity<?> login(AuthRequest request);
-    void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException;
+    ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException;
     ResponseEntity<?> changePassword(@NotNull ChangePasswordRequest request);
     ResponseEntity<?> sendVerificationCode(String phoneNumber);
     ResponseEntity<?> verifyCode(String phoneNumber, String code);

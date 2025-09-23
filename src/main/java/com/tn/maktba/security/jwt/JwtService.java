@@ -1,13 +1,14 @@
 package com.tn.maktba.security.jwt;
 
+import com.tn.maktba.exceptions.InvalidTokenException;
+import com.tn.maktba.model.user.UserEntity;
+import com.tn.maktba.security.utility.SecurityConstants;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import com.tn.maktba.model.user.UserEntity;
-import com.tn.maktba.security.utility.SecurityConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,11 +24,9 @@ public class JwtService {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
     private final Key accessKey;
-    private final Key refreshKey;
 
     public JwtService() {
         this.accessKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SecurityConstants.JWT_ACCES_SECRET_KEY));
-        this.refreshKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SecurityConstants.JWT_REFRESH_SECRET_KEY));
     }
 
     public String getIdCartNumberFromJwtToken(String token) {
@@ -35,7 +34,7 @@ public class JwtService {
             return extractClaim(token, Claims::getSubject);
         } catch (JwtException e) {
             logger.error("Failed to extract idCartNumber from token: {}", e.getMessage());
-            return null;
+            throw new InvalidTokenException("Invalid token");
         }
     }
 
@@ -43,7 +42,8 @@ public class JwtService {
         try {
             return extractClaim(token, claimsResolver, accessKey);
         } catch (JwtException e) {
-            return extractClaim(token, claimsResolver, refreshKey);
+            logger.error("Failed to extract claim from token: {}", e.getMessage());
+            throw new InvalidTokenException("Invalid token");
         }
     }
 
@@ -52,18 +52,6 @@ public class JwtService {
         claims.put("phoneNumber", userDetails.getPhoneNumber());
         claims.put("type", "access");
         return buildToken(claims, userDetails, SecurityConstants.JWT_ACCES_EXPIRATION, accessKey);
-    }
-
-    public String generateJwtToken(Map<String, Object> extraClaims, UserEntity userDetails) {
-        Map<String, Object> claims = new HashMap<>(extraClaims);
-        claims.put("type", "access");
-        return buildToken(claims, userDetails, SecurityConstants.JWT_ACCES_EXPIRATION, accessKey);
-    }
-
-    public String generateJwtRefreshToken(UserEntity user) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("type", "refresh");
-        return buildToken(claims, user, SecurityConstants.JWT_REFRESH_EXPIRATION, refreshKey);
     }
 
     private String buildToken(Map<String, Object> claims, UserEntity userDetails, long expirationTime, Key key) {
@@ -79,22 +67,22 @@ public class JwtService {
     public boolean isTokenValid(String token, UserEntity userDetails) {
         try {
             String idCartNumber = extractClaim(token, Claims::getSubject);
+            String type = extractClaim(token, claims -> claims.get("type", String.class));
+            if (!"access".equals(type)) {
+                throw new InvalidTokenException("Token type is not access.");
+            }
             return idCartNumber != null && idCartNumber.equals(userDetails.getIdCartNumber()) && !isTokenExpired(token);
         } catch (JwtException e) {
             logger.error("Token validation failed: {}", e.getMessage());
-            return false;
+            throw new InvalidTokenException("Invalid token");
         }
     }
 
     private boolean isTokenExpired(String token) {
         try {
-            try {
-                return extractClaim(token, Claims::getExpiration, accessKey).before(new Date());
-            } catch (JwtException e) {
-                return extractClaim(token, Claims::getExpiration, refreshKey).before(new Date());
-            }
+            return extractClaim(token, Claims::getExpiration, accessKey).before(new Date());
         } catch (JwtException e) {
-            return true;
+            throw new InvalidTokenException("Invalid token");
         }
     }
 

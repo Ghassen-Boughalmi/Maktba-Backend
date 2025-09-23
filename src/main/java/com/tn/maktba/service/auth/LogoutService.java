@@ -19,12 +19,9 @@ public class LogoutService implements LogoutHandler {
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         final String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return;
-        }
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) { return;}
         final String token = authHeader.substring(7);
-        var storedToken = tokenRepository.findByToken(token)
-                .orElse(null);
+        var storedToken = tokenRepository.findByToken(token).orElse(null);
         if (storedToken != null) {
             storedToken.setExpired(true);
             storedToken.setRevoked(true);

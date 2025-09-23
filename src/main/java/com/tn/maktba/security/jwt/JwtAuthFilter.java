@@ -3,6 +3,7 @@ package com.tn.maktba.security.jwt;
 import com.tn.maktba.exceptions.ExpiredTokenException;
 import com.tn.maktba.exceptions.InvalidTokenException;
 import com.tn.maktba.exceptions.RevokedTokenException;
+import com.tn.maktba.model.token.TokenType;
 import com.tn.maktba.model.user.UserEntity;
 import com.tn.maktba.repository.TokenRepository;
 import jakarta.servlet.FilterChain;
@@ -13,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -43,18 +43,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         String jwt = authHeader.substring(7);
-        String type = jwtService.extractClaim(jwt, claims -> claims.get("type", String.class));
-        if (!"access".equals(type)) {
-            throw new InvalidTokenException("Token type is not access.");
-        }
-
         String idCartNumber = jwtService.getIdCartNumberFromJwtToken(jwt);
         if (idCartNumber == null) {
             throw new InvalidTokenException("Invalid token: Unable to extract idCartNumber.");
         }
 
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(idCartNumber);
+            UserEntity userDetails = (UserEntity) userDetailsService.loadUserByUsername(idCartNumber);
             boolean isTokenValid = tokenRepository.findByToken(jwt)
                     .map(t -> {
                         if (t.isExpired()) {
@@ -63,11 +58,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         if (t.isRevoked()) {
                             throw new RevokedTokenException("Token has been revoked.");
                         }
+                        if (t.getTokenType() != TokenType.ACCESS) {
+                            throw new InvalidTokenException("Token type is not access.");
+                        }
                         return true;
                     })
                     .orElseThrow(() -> new InvalidTokenException("Token not found in repository."));
 
-            if (!jwtService.isTokenValid(jwt, (UserEntity) userDetails)) {
+            if (!jwtService.isTokenValid(jwt, userDetails)) {
                 throw new InvalidTokenException("Token validation failed.");
             }
 

@@ -2,30 +2,27 @@ package com.tn.maktba.model.token;
 
 import com.tn.maktba.model.user.UserEntity;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.Date;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity
-@Table(name = "token")
-public class Token {
-
+public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "token", length = 2048)
-    private String token;
-
-    @Enumerated(EnumType.STRING)
-    private TokenType tokenType = TokenType.ACCESS;
-
+    private Integer id;
+    private String refreshToken;
     private boolean expired;
-
     private boolean revoked;
-
+    private Date issuedAt;
+    private Date expiresAt;
     @ManyToOne
     @JoinColumn(name = "user_id")
     private UserEntity user;
